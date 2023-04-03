@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
 import MkdSDK from "../utils/MkdSDK";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../authContext";
+import { GlobalContext } from "../globalContext";
 
 const AdminLoginPage = () => {
   const schema = yup
@@ -14,7 +15,10 @@ const AdminLoginPage = () => {
     })
     .required();
 
-  const { dispatch } = React.useContext(AuthContext);
+  const { dispatch, state: user_state } = React.useContext(AuthContext);
+  console.log("user context", user_state);
+  const { dispatch: snackbarDispatch } = React.useContext(GlobalContext);
+
   const navigate = useNavigate();
   const {
     register,
@@ -26,12 +30,29 @@ const AdminLoginPage = () => {
   });
 
   const onSubmit = async (data) => {
-    console.log("data", data);
     let sdk = new MkdSDK();
-    console.log("url", sdk._baseurl);
     // //TODO
-    sdk.callRestAPI(data, "POST");
+    const { email, password } = data;
+    const res = await sdk.login(email, password, "admin");
+    if (!res.error) {
+      snackbarDispatch({
+        type: "SNACKBAR",
+        payload: { message: "login successfully" },
+      });
+      dispatch({ type: "LOGIN", payload: res });
+      navigate("/admin/dashboard");
+    } else {
+      snackbarDispatch({
+        type: "SNACKBAR",
+        payload: { message: res.message },
+      });
+    }
   };
+  useEffect(() => {
+    if (user_state.isAisAuthenticated && user_state.role === "admin") {
+      navigate("/admin/dashboard");
+    }
+  }, []);
 
   return (
     <div className="w-full max-w-xs mx-auto">
